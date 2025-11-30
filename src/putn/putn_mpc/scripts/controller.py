@@ -17,7 +17,7 @@ class Controller(Node):
     def __init__(self):
         super().__init__('control')
         self.N = 10
-        self.rate_hz = 50
+        self.rate_hz = 20  # 降低局部规划/控制频率从 50Hz 到 20Hz
         self.curr_state = np.zeros(4)
         self.sub1 = self.create_subscription(Float32MultiArray, '/local_plan', self.local_planner_cb, 10)
         self.pub = self.create_publisher(Twist, '/cmd_vel', 10)

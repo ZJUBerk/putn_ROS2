@@ -265,6 +265,21 @@ int main(int argc, char** argv)
   rclcpp::init(argc, argv);
   auto node = rclcpp::Node::make_shared("global_planning_node");
 
+  // 参数声明：允许用户配置规划起点相对于 base_link 的偏移量
+  // 如果路径起点在车身右后方，可以通过调整这些参数来修正
+  node->declare_parameter<std::string>("start/frame", "base_link");
+  node->declare_parameter<double>("start/offset_x", 0.0);
+  node->declare_parameter<double>("start/offset_y", 0.0);
+  node->declare_parameter<double>("start/offset_z", 0.0);
+  
+  std::string start_frame;
+  double start_offset_x, start_offset_y, start_offset_z;
+  
+  node->get_parameter("start/frame", start_frame);
+  node->get_parameter("start/offset_x", start_offset_x);
+  node->get_parameter("start/offset_y", start_offset_y);
+  node->get_parameter("start/offset_z", start_offset_z);
+
   map_sub = node->create_subscription<sensor_msgs::msg::PointCloud2>("map", 10, rcvPointCloudCallBack);
   wp_sub = node->create_subscription<nav_msgs::msg::Path>("waypoints", 10, rcvWaypointsCallback);
 
@@ -339,7 +354,7 @@ int main(int argc, char** argv)
     {
       try
       {
-        transform = tf_buffer->lookupTransform("world", "base_link", tf2::TimePointZero);
+        transform = tf_buffer->lookupTransform("world", start_frame, tf2::TimePointZero);
         break;
       }
       catch (const tf2::TransformException& ex)
@@ -347,9 +362,18 @@ int main(int argc, char** argv)
         continue;
       }
     }
-    start_pt << transform.transform.translation.x,
-                transform.transform.translation.y,
-                transform.transform.translation.z;
+    
+    // 使用 transform 中的旋转信息来转换 offset
+    Eigen::Quaterniond q(transform.transform.rotation.w, 
+                         transform.transform.rotation.x, 
+                         transform.transform.rotation.y, 
+                         transform.transform.rotation.z);
+    Eigen::Vector3d offset_body(start_offset_x, start_offset_y, start_offset_z);
+    Eigen::Vector3d offset_world = q * offset_body;
+
+    start_pt << transform.transform.translation.x + offset_world.x(),
+                transform.transform.translation.y + offset_world.y(),
+                transform.transform.translation.z + offset_world.z();
 
     rclcpp::spin_some(node);
     callPlanner();
@@ -359,7 +383,7 @@ int main(int argc, char** argv)
       timeval end;
       gettimeofday(&end, NULL);
       ms = 1000 * (end.tv_sec - start.tv_sec) + 0.001 * (end.tv_usec - start.tv_usec);
-    } while (ms < 100);
+    } while (ms < 1000); // 增加循环周期到 500ms (2Hz)，降低全局规划频率
   }
   rclcpp::shutdown();
   return 0;

@@ -63,6 +63,9 @@ def generate_launch_description():
         executable='gpr_path',
         name='gpr_path',
         output='screen',
+        parameters=[{
+            'file/cfg_path': PathJoinSubstitution([FindPackageShare('gpr'), 'config', 'hyperparam.txt'])
+        }],
         # prefix='xterm -hold -e',
         # emulate_tty=True,
         remappings=[

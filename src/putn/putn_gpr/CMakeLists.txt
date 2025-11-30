@@ -17,6 +17,10 @@ ament_target_dependencies(gpr_path rclcpp std_msgs)
 install(TARGETS gpr_path
   DESTINATION lib/${PROJECT_NAME})
 
+install(DIRECTORY config
+  DESTINATION share/${PROJECT_NAME}
+)
+
 ament_package()
 
 
