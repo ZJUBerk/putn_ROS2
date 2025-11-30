@@ -5,7 +5,7 @@ from std_msgs.msg import Bool, Float64, Float32MultiArray
 from geometry_msgs.msg import Pose, PoseArray, PoseStamped, Point, Twist
 from nav_msgs.msg import Path, Odometry, OccupancyGrid
 import numpy as np
-from MPC import MPC
+from MPC_2 import MPC
 from sensor_msgs.msg import LaserScan
 from visualization_msgs.msg import Marker, MarkerArray
 
@@ -37,6 +37,8 @@ class Local_Planner(Node):
         self.__sub_curr_state = self.create_subscription(Float32MultiArray, '/curr_state', self.__curr_pose_cb, 10)
         self.__sub_obs = self.create_subscription(Float32MultiArray, '/obs', self.__obs_cb, 10)
         self.__sub_goal_state = self.create_subscription(Float32MultiArray, '/surf_predict_pub', self._global_path_callback2, 10)
+        # subscribe front lidar for obstacle points (optional, complements /obs)
+        self.__sub_scan = self.create_subscription(LaserScan, '/scan', self._scan_callback, 10)
         self.__pub_local_path = self.create_publisher(Path, '/local_path', 10)
         self.__pub_local_plan = self.create_publisher(Float32MultiArray, '/local_plan', 10)
         self.control_cmd = Twist()
@@ -64,10 +66,10 @@ class Local_Planner(Node):
             t_ob.scale.x = 0.1
             t_ob.scale.y = 0.1
             t_ob.scale.z = 0.4
-            t_ob.color.a = 1.0
-            t_ob.color.r = 0.0
-            t_ob.color.g = 1.0
-            t_ob.color.b = 0.0
+            t_ob.color.a= 1
+            t_ob.color.r = 0
+            t_ob.color.g = 1
+            t_ob.color.b = 0
             self.obstacle_markerarray.markers.append(t_ob)
             num = num +1
         self.ob_pub.publish(self.obstacle_markerarray)
@@ -120,7 +122,8 @@ class Local_Planner(Node):
         local_path = Path()
         local_plan = Float32MultiArray()
         local_path.header.stamp = self.get_clock().now().to_msg()
-        local_path.header.frame_id = "/world"
+        # use frame id without leading slash for compatibility
+        local_path.header.frame_id = "world"
 
         for i in range(self.N):
             this_pose_stamped = PoseStamped()
@@ -128,7 +131,7 @@ class Local_Planner(Node):
             this_pose_stamped.pose.position.y = state_sol[i,1]
             this_pose_stamped.pose.position.z = self.z+0.5 #self.desired_global_path[0][0,2]
             this_pose_stamped.header.stamp = self.get_clock().now().to_msg()
-            this_pose_stamped.header.frame_id="/world"
+            this_pose_stamped.header.frame_id="world"
             local_path.poses.append(this_pose_stamped)
             
             for j in range(2):

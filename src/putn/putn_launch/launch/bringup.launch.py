@@ -41,7 +41,7 @@ def generate_launch_description():
             'map/local_z_u': 0.4,
         }],
         remappings=[
-            ('map', '/fastlio/cloud_registered'),
+            ('map', '/fastlio/cloud_registered_body'), # 改为 body 坐标系下的点云，更适合局部避障
         ],
     )
 

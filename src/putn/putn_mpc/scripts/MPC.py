@@ -53,6 +53,28 @@ def MPC(self_state, goal_state, obstacles):
 
     # Position Boundaries
     # Here you can customize the avoidance of local obstacles 
+    # 简单的基于距离的避障约束
+    # obstacles 格式假设为 Nx2 或 Nx3 (x, y, radius)，如果 radius 缺失则使用默认安全距离
+    # if len(obstacles) > 0:
+    #     # 只考虑距离最近的几个障碍物以减少计算量
+    #     # 这里简单遍历所有障碍物，如果数量太多可能需要预筛选
+        
+    #     # 障碍物膨胀半径 (机器人半径 + 安全余量)
+    #     robot_radius = 0.4
+        
+    #     for i in range(N+1): # 对整个预测视野内的每个点进行约束
+    #         for obs in obstacles:
+    #             obs_x = obs[0]
+    #             obs_y = obs[1]
+    #             # 如果 obstacle 数据包含半径则使用，否则默认为 0 (点障碍)
+    #             obs_r = obs[2] if len(obs) > 2 else 0.0
+                
+    #             # 安全距离 = 机器人半径 + 障碍物半径 + 额外安全余量
+    #             min_dist = robot_radius + obs_r + 0.1
+                
+    #             # 距离约束: (x - obs_x)^2 + (y - obs_y)^2 >= min_dist^2
+    #             dist_sq = (opt_states[i, 0] - obs_x)**2 + (opt_states[i, 1] - obs_y)**2
+    #             opti.subject_to(dist_sq >= min_dist**2)
 
     # Admissable Control constraints
     # 禁止后向速度：设置最小速度为 0

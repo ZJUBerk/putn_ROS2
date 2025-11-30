@@ -79,13 +79,14 @@ void rcvVelodyneCallBack(const sensor_msgs::msg::PointCloud2::SharedPtr velodyne
   for (const auto& pt : cloud_filt->points)
   {
     geometry_msgs::msg::PointStamped origin_point;
-    origin_point.header.frame_id = "aft_mapped";
+    origin_point.header.frame_id = velodyne_points->header.frame_id; // 使用输入点云的 frame_id，通常是 camera_init 或 map
     origin_point.point.x = pt.x;
     origin_point.point.y = pt.y;
     origin_point.point.z = pt.z;
 
     geometry_msgs::msg::PointStamped trans_point;
     try {
+      // 转换到 world 坐标系 (如果输入已经是 world 系，这里变换是单位变换)
       trans_point = tf_buffer->transform(origin_point, "world");
     } catch (const tf2::TransformException& ex) {
       continue;
