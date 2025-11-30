@@ -4,7 +4,7 @@ global_planning_node:
     "map/z_min": -0.5
     "map/z_max": 1.0
     "planning/step_size": 0.2
-    "planning/h_surf_car": 0.3
+    "planning/h_surf_car": 0.5
     "planning/radius_fit_plane": 0.2
     "planning/w_flatness": 3000.0
     "planning/w_slope": 0.3

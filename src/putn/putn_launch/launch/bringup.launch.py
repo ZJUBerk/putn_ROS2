@@ -11,7 +11,7 @@ def generate_launch_description():
         package='tf2_ros',
         executable='static_transform_publisher',
         name='world_to_map',
-        arguments=['0', '0', '0', '0', '0', '0', 'world', 'map']
+        arguments=['0', '0', '0', '0', '0', '0', 'world', 'global_map']
     )
 
     global_planning = Node(
@@ -21,7 +21,7 @@ def generate_launch_description():
         output='screen',
         parameters=[param_file],
         remappings=[
-            ('map', '/slam_node/map_global'),
+            ('map', '/multi_session/merged_map'),
             ('waypoints', '/waypoints'),
         ],
     )
@@ -41,7 +41,7 @@ def generate_launch_description():
             'map/local_z_u': 0.4,
         }],
         remappings=[
-            ('map', '/slam_node/cloud_registered'),
+            ('map', '/fastlio/cloud_registered'),
         ],
     )
 
@@ -50,11 +50,11 @@ def generate_launch_description():
         executable='waypoint_generator',
         name='waypoint_generator',
         output='screen',
-        prefix='xterm -hold -e',
-        emulate_tty=True,
+        # prefix='xterm -hold -e',
+        # emulate_tty=True,
         remappings=[
             ('goal', '/goal'),
-            ('odom', '/odom')
+            ('odom', '/base_odom')
         ],
     )
 
@@ -63,8 +63,8 @@ def generate_launch_description():
         executable='gpr_path',
         name='gpr_path',
         output='screen',
-        prefix='xterm -hold -e',
-        emulate_tty=True,
+        # prefix='xterm -hold -e',
+        # emulate_tty=True,
         remappings=[
             ('/global_planning_node/global_path', '/global_path'),
             ('/global_planning_node/tree_tra', '/tree_tra'),
@@ -84,8 +84,8 @@ def generate_launch_description():
         executable='local_planner.py',
         name='local_planner',
         output='screen',
-        prefix='xterm -hold -e',
-        emulate_tty=True
+        # prefix='xterm -hold -e',
+        # emulate_tty=True
     )
 
     controller = Node(
@@ -93,8 +93,8 @@ def generate_launch_description():
         executable='controller.py',
         name='controller',
         output='screen',
-        prefix='xterm -hold -e',
-        emulate_tty=True
+        # prefix='xterm -hold -e',
+        # emulate_tty=True
     )
 
     return LaunchDescription([
@@ -103,7 +103,7 @@ def generate_launch_description():
         gpr_path,
         global_planning,
         local_obs,
-        rviz2,
+        # rviz2,
         local_planner,
         controller
     ])
