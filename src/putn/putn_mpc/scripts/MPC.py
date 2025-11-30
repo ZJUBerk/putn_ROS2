@@ -8,8 +8,8 @@ def MPC(self_state, goal_state, obstacles):
     ## parameters for optimization
     T = 0.2
     N = 10  # MPC horizon
-    v_max = 0.5
-    omega_max = 0.6
+    v_max = 0.4
+    omega_max = 0.4
     safe_distance = 0.55
     Q = np.array([[1.2, 0.0, 0.0],[0.0, 1.2, 0.0],[0.0, 0.0, 0.0]])
     R = np.array([[0.2, 0.0], [0.0, 0.15]])

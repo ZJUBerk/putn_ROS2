@@ -96,6 +96,7 @@ class Local_Planner(Node):
 
     def __replan_cb(self):
         if self.robot_state_set and self.ref_path_set:
+            # self.get_logger().info("[local_planner] Replanning...")
             target = []
             self.choose_goal_state()        ##  gobal planning
             dist = 1
@@ -103,17 +104,20 @@ class Local_Planner(Node):
             start_time = self.get_clock().now()
             states_sol, input_sol = MPC(np.expand_dims(self.curr_state, axis=0),self.goal_state,self.ob) ##  gobal planning
             end_time = self.get_clock().now()
-            self.get_logger().info('[local_planner] solved in {:.3f} sec'.format((end_time-start_time).nanoseconds/1e9))
+            # self.get_logger().info('[local_planner] solved in {:.3f} sec'.format((end_time-start_time).nanoseconds/1e9))
 
             if(self.is_end == 0):
                 self.__publish_local_plan(input_sol,states_sol)
+            else:
+                self.get_logger().info("[local_planner] Reached end, stopping.")
+                
             self.have_plan = True
         elif self.robot_state_set==False and self.ref_path_set==True:
-            print("no pose")
+            self.get_logger().warn("no pose")
         elif self.robot_state_set==True and self.ref_path_set==False:
-            print("no path")
+            self.get_logger().warn("no path (ref_path_set is False)")
         else:
-            print("no path and no pose")
+            self.get_logger().warn("no path and no pose")
         
 
     def __publish_local_plan(self,input_sol,state_sol):
@@ -157,11 +161,18 @@ class Local_Planner(Node):
         for i in range(self.N):  
             num_path = min(self.desired_global_path[1]-1,int(num+i*scale))
             num_list.append(num_path)
-        if(num  >= self.desired_global_path[1]):
+        
+        # 检查是否到达终点附近的条件需要更严格，防止过早判定结束
+        # 使用距离判定而不是仅仅依赖索引
+        dist_to_goal = self.distance_global(self.curr_state, self.desired_global_path[0][self.desired_global_path[1]-1])
+        if(num >= self.desired_global_path[1]-1 and dist_to_goal < 0.5): # 增加距离检查
             self.is_end = 1
+        else:
+            self.is_end = 0 # 确保在未到达时重置标志位
+            
         for k in range(self.N):
             self.goal_state[k] = self.desired_global_path[0][num_list[k]]
-        print(self.goal_state)
+        # print(self.goal_state)
 
     def __curr_pose_cb(self, data):
         self.robot_state_set = True
@@ -184,8 +195,10 @@ class Local_Planner(Node):
                 self.desired_global_path[0][i,2]=data.data[3*(size-i)-1]
     
     def _global_path_callback2(self, data):
+        self.get_logger().info(f"[local_planner] Received surf_predict_pub data, size: {len(data.data)}")
         if(len(data.data)!=0):
             self.ref_path_set = True
+            self.is_end = 0 # 收到新路径时，重置结束标志位
             size = len(data.data)//5
             self.desired_global_path[1]=size
             for i in range(size):
@@ -193,6 +206,8 @@ class Local_Planner(Node):
                 self.desired_global_path[0][i,1]=data.data[5*(size-i)-4]
                 self.desired_global_path[0][i,2]=data.data[5*(size-i)-2]
                 self.desired_global_path[0][i,3]=data.data[5*(size-i)-1]
+        else:
+            self.get_logger().warn("[local_planner] Received empty global path data!")
             
     
 

@@ -68,24 +68,15 @@ void ClearVectorOut( vector< output_type >& vt )
   veTemp.swap( vt );
 }
 
-void treecb(const std_msgs::msg::Float32MultiArray::SharedPtr msg)
+void run_gpr()
 {
+  if (train_inputs.empty() || test_inputs.empty()) {
+      return;
+  }
+
   double dur;
   clock_t start,end;start = clock();
-  RCLCPP_INFO(rclcpp::get_logger("gpr_path"), "[node] receive the tree");
-  if(msg->data.size() == 0) return;
-
-  int num = (int)(msg->data.size()/4);
-	for (int i=0; i<num; i++) 
-  {
-    input_type tmp_in;
-    tmp_in << msg->data[4*i],msg->data[4*i+1],msg->data[4*i+2];
-    train_inputs.push_back(tmp_in);
-    output_type tmp_out;
-    tmp_out << msg->data[4*i+3] ;
-    train_outputs.push_back(tmp_out);
-	}
-
+  
   //GPr
   GaussianProcessRegression<float> myGPR(input_dim, output_dim);
   set_hyperparameters_from_file(filepath.c_str(),myGPR);
@@ -94,20 +85,7 @@ void treecb(const std_msgs::msg::Float32MultiArray::SharedPtr msg)
       myGPR.AddTrainingData(train_inputs[k], train_outputs[k]);
    }
   
-  double threshold = 0.1;
-
-
-  if(test_inputs.size()==0)
-  {
-    ClearVectorIn(train_inputs);
-    ClearVectorIn(test_inputs);
-    ClearVectorOut(train_outputs);
-    ClearVectorOut(test_outputs);
-  }
-
-
-   std_msgs::msg::Float32MultiArray out_ym;
-   std_msgs::msg::Float32MultiArray out_ys;
+  std_msgs::msg::Float32MultiArray out_ym;
 
   for(size_t k=0; k<test_inputs.size(); k++)
   {
@@ -125,14 +103,35 @@ void treecb(const std_msgs::msg::Float32MultiArray::SharedPtr msg)
 
   }
   _surf_predict_pub->publish(out_ym);
-  std_msgs::msg::Float32MultiArray tmp_out;
+  
   ClearVectorIn(train_inputs);
   ClearVectorIn(test_inputs);
   ClearVectorOut(train_outputs);
   ClearVectorOut(test_outputs);
+  
   end = clock();
   dur = (double)(end - start);
   cout<<"Time consume ："<<dur/1000<<" ms"<<endl;
+}
+
+void treecb(const std_msgs::msg::Float32MultiArray::SharedPtr msg)
+{
+  RCLCPP_INFO(rclcpp::get_logger("gpr_path"), "[node] receive the tree");
+  if(msg->data.size() == 0) return;
+
+  int num = (int)(msg->data.size()/4);
+	for (int i=0; i<num; i++) 
+  {
+    input_type tmp_in;
+    tmp_in << msg->data[4*i],msg->data[4*i+1],msg->data[4*i+2];
+    train_inputs.push_back(tmp_in);
+    output_type tmp_out;
+    tmp_out << msg->data[4*i+3] ;
+    train_outputs.push_back(tmp_out);
+	}
+    
+    // 尝试运行 GPR，如果数据都准备好了
+    run_gpr();
 }
 
 void pathcb(const std_msgs::msg::Float32MultiArray::SharedPtr msg)
@@ -147,6 +146,9 @@ void pathcb(const std_msgs::msg::Float32MultiArray::SharedPtr msg)
     tmp_in <<msg->data[3*i],msg->data[3*i+1],msg->data[3*i+2];
     test_inputs.push_back(tmp_in);
 	}
+    
+    // 尝试运行 GPR，如果数据都准备好了
+    run_gpr();
 }
 
 

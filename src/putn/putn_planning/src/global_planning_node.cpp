@@ -50,6 +50,9 @@ rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr tree_tra_pub;
 
 // indicate whether the robot has a moving goal
 bool has_goal = false;
+bool has_global_path = false; // 是否已有有效的全局路径
+double replan_deviation_thre = 0.5; // 重规划偏差阈值 (m)
+Path current_solution; // 存储当前的全局路径
 
 // simulation param from launch file
 double resolution;
@@ -154,7 +157,36 @@ void pubInterpolatedPath(const vector<Node*>& solution, rclcpp::Publisher<std_ms
  */
 void findSolution()
 {
-  
+  // 如果已经有有效的全局路径，且小车没有偏离路径太远，则跳过重规划
+  // 除非当前的路径不是完整路径 (Path::Global) 且需要随着推进寻找更优解
+  if (has_global_path && !current_solution.nodes_.empty()) {
+    double min_dist = std::numeric_limits<double>::max();
+    for (const auto& node : current_solution.nodes_) {
+        double dist = (node->position_ - start_pt).norm();
+        if (dist < min_dist) min_dist = dist;
+    }
+    
+    // 如果偏差在阈值内，且当前路径是全局路径（直达终点），则不再规划
+    if (min_dist < replan_deviation_thre && current_solution.type_ == Path::Global) {
+        ROS_INFO_THROTTLE(50, "Following existing global path (deviation: %.2f)", min_dist);
+        // 依然发布当前路径给局部规划器
+        pubInterpolatedPath(current_solution.nodes_, &path_interpolation_pub);
+        visPath(current_solution.nodes_, path_vis_pub);
+        visSurf(current_solution.nodes_, surf_vis_pub);
+        
+        // 检查是否到达终点
+        if (EuclideanDistance(pf_rrt_star->origin(), pf_rrt_star->target()) < goal_thre) {
+            has_goal = false;
+            has_global_path = false;
+            visOriginAndGoal({}, goal_vis_pub);
+            visPath({}, path_vis_pub);
+            ROS_INFO_THROTTLE(50, "The Robot has achieved the goal!!!");
+        }
+        return;
+    }
+    ROS_INFO_THROTTLE(50, "Replanning triggered: min_dist=%.2f, path_type=%d", min_dist, current_solution.type_);
+  }
+
   ROS_INFO_THROTTLE(50, "Start calling PF-RRT*");
   Path solution = Path();
 
@@ -199,6 +231,17 @@ void findSolution()
     else
       ROS_WARN_THROTTLE(50, "No solution found!");
   }
+  
+  // 更新当前路径状态
+  if (!solution.nodes_.empty()) {
+      current_solution = solution;
+      has_global_path = true;
+  } else {
+      // 如果规划失败但之前有路径，可能只是暂时无法优化，保留旧路径或清空视策略而定
+      // 这里选择保留旧路径以防瞬间丢失，除非旧路径也无效
+      if (!has_global_path) current_solution = solution; 
+  }
+
   ROS_INFO_THROTTLE(50, "End calling PF-RRT*");
   
 
